@@ -1,0 +1,12 @@
+[package]
+name = "mermaid"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/mermaid.rs"
+
+[dependencies]
+zed_extension_api = { path = "../../crates/extension_api" }
