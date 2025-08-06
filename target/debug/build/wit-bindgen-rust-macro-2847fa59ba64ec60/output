@@ -1,0 +1,2 @@
+cargo:rerun-if-changed=build.rs
+cargo:rustc-env=DEBUG_OUTPUT_DIR=C:\Users\Charbel\OneDrive\Desktop\mermaid\target\debug\build\wit-bindgen-rust-macro-2847fa59ba64ec60\out

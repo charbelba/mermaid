@@ -1,70 +1,90 @@
-use zed_extension_api as zed;
+use zed_extension_api::{
+    self as zed, SlashCommand, SlashCommandArgumentCompletion, SlashCommandOutput,
+    SlashCommandOutputSection, Worktree,
+};
 
-struct MermaidPreviewExtension;
+struct SlashCommandsExampleExtension;
 
-impl zed::Extension for MermaidPreviewExtension {
+impl zed::Extension for SlashCommandsExampleExtension {
     fn new() -> Self {
-        println!("[mermaid-preview] Extension initialized");
-        Self
+        SlashCommandsExampleExtension
     }
 
-    fn on_buffer_changed(&mut self, buffer: &zed::Buffer, _changes: &[zed::Change]) {
-        if buffer.language_id() != "markdown" {
-            return;
+    fn complete_slash_command_argument(
+        &self,
+        command: SlashCommand,
+        _args: Vec<String>,
+    ) -> Result<Vec<zed_extension_api::SlashCommandArgumentCompletion>, String> {
+        match command.name.as_str() {
+            "echo" => Ok(vec![]),
+            "pick-one" => Ok(vec![
+                SlashCommandArgumentCompletion {
+                    label: "Option One".to_string(),
+                    new_text: "option-1".to_string(),
+                    run_command: true,
+                },
+                SlashCommandArgumentCompletion {
+                    label: "Option Two".to_string(),
+                    new_text: "option-2".to_string(),
+                    run_command: true,
+                },
+                SlashCommandArgumentCompletion {
+                    label: "Option Three".to_string(),
+                    new_text: "option-3".to_string(),
+                    run_command: true,
+                },
+            ]),
+            command => Err(format!("unknown slash command: \"{command}\"")),
         }
+    }
 
-        let text = buffer.text();
-        let mermaid_code = extract_mermaid_block(text);
-        if !mermaid_code.is_empty() {
-            write_preview_html(&mermaid_code);
+    fn run_slash_command(
+        &self,
+        command: SlashCommand,
+        args: Vec<String>,
+        _worktree: Option<&Worktree>,
+    ) -> Result<SlashCommandOutput, String> {
+        match command.name.as_str() {
+            "echo" => {
+                if args.is_empty() {
+                    return Err("nothing to echo".to_string());
+                }
+
+                let text = args.join(" ");
+
+                Ok(SlashCommandOutput {
+                    sections: vec![SlashCommandOutputSection {
+                        range: (0..text.len()).into(),
+                        label: "Echo".to_string(),
+                    }],
+                    text,
+                })
+            }
+            "pick-one" => {
+                let Some(selection) = args.first() else {
+                    return Err("no option selected".to_string());
+                };
+
+                match selection.as_str() {
+                    "option-1" | "option-2" | "option-3" => {}
+                    invalid_option => {
+                        return Err(format!("{invalid_option} is not a valid option"));
+                    }
+                }
+
+                let text = format!("You chose {selection}.");
+
+                Ok(SlashCommandOutput {
+                    sections: vec![SlashCommandOutputSection {
+                        range: (0..text.len()).into(),
+                        label: format!("Pick One: {selection}"),
+                    }],
+                    text,
+                })
+            }
+            command => Err(format!("unknown slash command: \"{command}\"")),
         }
     }
 }
 
-fn extract_mermaid_block(text: &str) -> String {
-    let start_tag = "```mermaid";
-    let end_tag = "```";
-
-    let mut inside_block = false;
-    let mut block_lines = vec![];
-
-    for line in text.lines() {
-        if line.trim_start().starts_with(start_tag) {
-            inside_block = true;
-            continue;
-        }
-        if inside_block && line.trim_start().starts_with(end_tag) {
-            break;
-        }
-        if inside_block {
-            block_lines.push(line);
-        }
-    }
-
-    block_lines.join("\n")
-}
-
-fn write_preview_html(code: &str) {
-    let html = format!(
-        r#"<!DOCTYPE html>
-<html>
-<head>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-</head>
-<body>
-  <div class="mermaid">{}</div>
-  <script>mermaid.initialize({{ startOnLoad: true }});</script>
-</body>
-</html>"#,
-        code
-    );
-
-    let _ = std::fs::write("/tmp/mermaid_preview.html", html);
-
-    // Open only once or on significant changes if needed
-    let _ = std::process::Command::new("xdg-open") // "open" for macOS
-        .arg("/tmp/mermaid_preview.html")
-        .spawn();
-}
-
-zed::register_extension!(MermaidPreviewExtension);
+zed::register_extension!(SlashCommandsExampleExtension);
